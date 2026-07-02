@@ -381,7 +381,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <!-- ===== MAESTRO ===== -->
   <section class="panel">
-    <div class="panel-head"><span class="n">1</span><h2>Maestro de artículos <span class="qm" data-tip="Es tu lista de productos (SKU, descripción, EAN, clase, subclase). La app la usa para buscar productos y completar el EAN solo. Filtrá tu/s departamento/s en el maestro original y pegá o subí solo eso (el maestro entero es muy pesado para el navegador)." tabindex="0">?</span></h2><span class="sub">filtrá tu/s depto/s y pegá acá</span></div>
+    <div class="panel-head"><span class="n">1</span><h2>Maestro de artículos <span class="qm" data-tip="Es tu lista de productos (SKU, descripción, EAN, clase, subclase). La app la usa para buscar productos y completar el EAN solo. Podés subir el Excel del maestro entero (la app lo procesa por partes, puede tardar unos segundos) o filtrar tu/s departamento/s y pegar solo eso." tabindex="0">?</span></h2><span class="sub">subí el Excel o pegá tus deptos</span></div>
     <div class="panel-body">
       <div class="master-box" id="masterBox">
         <div class="big" id="masterTitle">Pegá tu maestro filtrado</div>
@@ -691,9 +691,9 @@ function sniff(l){return l.indexOf('\t')>=0?'\t':(l.indexOf(';')>=0?';':',');}
 function splitLine(l,d){const o=[];let c='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(q){if(ch=='"'){if(l[i+1]=='"'){c+='"';i++;}else q=false;}else c+=ch;}else{if(ch=='"')q=true;else if(ch===d){o.push(c);c='';}else c+=ch;}}o.push(c);return o;}
 function textToRows(text){const lines=text.split(/\r?\n/).filter(l=>l.trim().length);if(!lines.length)return[];const d=sniff(lines[0]);return lines.map(l=>splitLine(l,d));}
 function normH(s){return(s==null?'':s).toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
-function parseRows(rows){
-  if(!rows||!rows.length)return{recs:[],depts:[],diag:'Sin filas'};
-  const firstRaw=(rows[0]||[]).map(s=>(s==null?'':s).toString().trim().toLowerCase());
+/* detecta las columnas a partir de la fila de títulos; si no la reconoce, posiciones fijas */
+function headerMap(first){
+  const firstRaw=(first||[]).map(s=>(s==null?'':s).toString().trim().toLowerCase());
   const firstNorm=firstRaw.map(normH);
   const ALIAS_NORM={}; Object.keys(ALIAS).forEach(k=>ALIAS_NORM[k]=ALIAS[k].map(normH));
   const found={};
@@ -702,8 +702,13 @@ function parseRows(rows){
     if(i<0)i=firstNorm.findIndex(h=>ALIAS_NORM[k].includes(h));
     if(i>=0)found[k]=i;
   });
-  let map,start,usedHeader=false;
-  if(found.num!=null&&found.desc!=null){map=found;start=1;usedHeader=true;}else{map=POS;start=0;}
+  if(found.num!=null&&found.desc!=null)return{map:found,usedHeader:true,firstRaw};
+  return{map:POS,usedHeader:false,firstRaw};
+}
+function parseRows(rows){
+  if(!rows||!rows.length)return{recs:[],depts:[],diag:'Sin filas'};
+  const{map,usedHeader,firstRaw}=headerMap(rows[0]);
+  const start=usedHeader?1:0;
   const diag=usedHeader
     ?'Header OK · SKU col'+map.num+' · EAN col'+map.ean+' · Dept col'+map.dept
     :'⚠ Header no reconocido, usando posiciones fijas. Headers: '+firstRaw.slice(0,4).join(' | ');
@@ -750,8 +755,10 @@ function loadMaster(text){
     hideMasterLoading();
   });
 }
-function loadMasterXlsx(buf){
+function loadMasterXlsx(buf,file){
   if(typeof XLSX==='undefined'){masterMsg('El lector de Excel no se cargó. Pegá los datos (Ctrl+V) o usá un archivo .csv.',true);hideMasterLoading();return;}
+  // si SheetJS no puede con el archivo, reintentamos con el lector streaming
+  const retryBig=()=>{if(file&&/\.xlsx$/i.test(file.name)&&window.DecompressionStream){loadMasterXlsxBig(file);return true;}return false;};
   showMasterLoading('Leyendo Excel…');
   afterPaint(()=>{
     try{
@@ -760,7 +767,7 @@ function loadMasterXlsx(buf){
       if(!wsName){masterMsg('El Excel no tiene hojas.',true);hideMasterLoading();return;}
       const ws=wb.Sheets[wsName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''});
-      if(!rows.length){masterMsg('El Excel está vacío.',true);hideMasterLoading();return;}
+      if(!rows.length){if(retryBig())return;masterMsg('El Excel está vacío.',true);hideMasterLoading();return;}
       const{recs,depts,diag}=parseRows(rows);
       if(!recs.length){
         const firstRaw=(rows[0]||[]).slice(0,6).map(s=>(s==null?'':s).toString()).join(' | ');
@@ -769,9 +776,124 @@ function loadMasterXlsx(buf){
       }
       applyMaster(recs,depts,diag);
       toast(recs.length.toLocaleString('es-AR')+' productos cargados');
-    }catch(e){masterMsg('Error al leer el Excel: '+e.message,true);}
+    }catch(e){if(retryBig())return;masterMsg('Error al leer el Excel: '+e.message,true);}
     hideMasterLoading();
   });
+}
+/* ===== v10.5: lector streaming para Excel gigantes =====
+   El maestro completo exportado (500.000+ filas) infla el XML interno del .xlsx a
+   cientos de MB y el lector normal (SheetJS) no puede abrirlo en el navegador: tiraba
+   "El Excel está vacío" o directamente colgaba la pestaña. Este lector alternativo
+   descomprime el archivo por partes (DecompressionStream), lee fila por fila y se queda
+   solo con las columnas que usa la app, descartando SKUs repetidos al vuelo. */
+const BIG_XLSX_BYTES=8*1024*1024; // arriba de 8 MB usamos el lector streaming
+function xmlUnesc(s){return s.indexOf('&')<0?s:s.replace(/&(amp|lt|gt|quot|apos|#x?[0-9a-fA-F]+);/g,(m,e)=>e==='amp'?'&':e==='lt'?'<':e==='gt'?'>':e==='quot'?'"':e==='apos'?"'":String.fromCodePoint(e[1]==='x'||e[1]==='X'?parseInt(e.slice(2),16):parseInt(e.slice(1),10)));}
+function colIdx(ref){let n=0;for(let i=0;i<ref.length;i++){const c=ref.charCodeAt(i);if(c<65||c>90)break;n=n*26+(c-64);}return n-1;}
+/* índice de archivos dentro del zip (un .xlsx es un zip) */
+async function zipDir(file){
+  const tailLen=Math.min(file.size,66000);
+  const tail=new DataView(await file.slice(file.size-tailLen).arrayBuffer());
+  let eo=-1;
+  for(let i=tail.byteLength-22;i>=0;i--){if(tail.getUint32(i,true)===0x06054b50){eo=i;break;}}
+  if(eo<0)throw new Error('no parece un .xlsx válido');
+  const count=tail.getUint16(eo+10,true),cdSize=tail.getUint32(eo+12,true),cdOff=tail.getUint32(eo+16,true);
+  const cd=new DataView(await file.slice(cdOff,cdOff+cdSize).arrayBuffer());
+  const td=new TextDecoder();const entries={};let p=0;
+  for(let i=0;i<count&&p+46<=cd.byteLength;i++){
+    if(cd.getUint32(p,true)!==0x02014b50)break;
+    const method=cd.getUint16(p+10,true),csize=cd.getUint32(p+20,true);
+    const nl=cd.getUint16(p+28,true),el=cd.getUint16(p+30,true),cl=cd.getUint16(p+32,true);
+    const off=cd.getUint32(p+42,true);
+    entries[td.decode(new Uint8Array(cd.buffer,cd.byteOffset+p+46,nl))]={method,csize,off};
+    p+=46+nl+el+cl;
+  }
+  return entries;
+}
+async function zipStream(file,e){
+  const lh=new DataView(await file.slice(e.off,e.off+30).arrayBuffer());
+  const start=e.off+30+lh.getUint16(26,true)+lh.getUint16(28,true);
+  const blob=file.slice(start,start+e.csize);
+  return e.method===8?blob.stream().pipeThrough(new DecompressionStream('deflate-raw')):blob.stream();
+}
+function parseSharedXml(xml){
+  const out=[];const re=/<si\b[^>]*>([\s\S]*?)<\/si>/g;let m;
+  while((m=re.exec(xml))){
+    let t='';const tre=/<t\b[^>]*>([\s\S]*?)<\/t>/g;let x;
+    while((x=tre.exec(m[1])))t+=x[1];
+    out.push(xmlUnesc(t));
+  }
+  return out;
+}
+/* celdas de una fila; si "wanted" viene, solo materializa esas columnas */
+function bigCells(rxml,shared,wanted){
+  const out=[];const re=/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;let m;
+  while((m=re.exec(rxml))){
+    const attrs=m[1];
+    const rm=/\br="([A-Z]+)\d*"/.exec(attrs);if(!rm)continue;
+    const col=colIdx(rm[1]);
+    if(wanted&&!wanted.has(col))continue;
+    const tm=/\bt="([^"]*)"/.exec(attrs);const t=tm?tm[1]:'';const body=m[2]||'';
+    let v='';
+    if(t==='inlineStr'){const tre=/<t\b[^>]*>([\s\S]*?)<\/t>/g;let x;while((x=tre.exec(body)))v+=x[1];v=xmlUnesc(v);}
+    else{const vm=/<v>([\s\S]*?)<\/v>/.exec(body);v=vm?vm[1]:'';if(t==='s'&&v!=='')v=shared[+v]||'';else v=xmlUnesc(v);}
+    out[col]=v;
+  }
+  return out;
+}
+async function loadMasterXlsxBig(file){
+  showMasterLoading('Abriendo Excel grande…');
+  try{
+    const entries=await zipDir(file);
+    const ssName=Object.keys(entries).find(n=>/sharedstrings\.xml$/i.test(n));
+    const wsName=Object.keys(entries).filter(n=>/^xl\/worksheets\/[^\/]+\.xml$/i.test(n)).sort()[0];
+    if(!wsName)throw new Error('el Excel no tiene hojas');
+    showMasterLoading('Leyendo textos…');
+    const shared=ssName?parseSharedXml(await new Response(await zipStream(file,entries[ssName])).text()):[];
+    showMasterLoading('Procesando filas…');
+    const g=(c,i)=>(c&&c[i]!=null?c[i]:'').toString().trim();
+    const seen=new Set(),recs=[],depts=new Set();
+    let map=null,wanted=null,diag='',rowCount=0,lastBreath=0;
+    const addRec=c=>{
+      const num=g(c,map.num);if(!num||seen.has(num))return;
+      seen.add(num);
+      const r={num,desc:g(c,map.desc),ean:g(c,map.ean),dept:g(c,map.dept),clase:g(c,map.clase),subclase:g(c,map.subclase)};
+      recs.push(r);if(r.dept)depts.add(r.dept);
+    };
+    const reader=(await zipStream(file,entries[wsName])).getReader();
+    const td=new TextDecoder();let buf='';
+    for(;;){
+      const{done,value}=await reader.read();
+      if(value)buf+=td.decode(value,{stream:true});
+      let from=0;
+      for(;;){
+        const e=buf.indexOf('</row>',from);if(e<0)break;
+        let s=buf.indexOf('<row',from);if(s<0||s>e)s=from;
+        const cells=bigCells(buf.substring(s,e),shared,wanted);
+        if(!map){
+          const h=headerMap(cells);
+          map=h.map;wanted=new Set(Object.keys(map).map(k=>map[k]));
+          diag=h.usedHeader
+            ?'Header OK · SKU col'+map.num+' · EAN col'+map.ean+' · Dept col'+map.dept
+            :'⚠ Header no reconocido, usando posiciones fijas';
+          if(!h.usedHeader)addRec(cells); // la primera fila ya era un dato
+        }else addRec(cells);
+        rowCount++;from=e+6;
+      }
+      buf=buf.slice(from);
+      if(rowCount-lastBreath>=30000){ // respirar para que la pantalla no se congele
+        lastBreath=rowCount;
+        showMasterLoading('Procesando… '+rowCount.toLocaleString('es-AR')+' filas · '+recs.length.toLocaleString('es-AR')+' productos');
+        await new Promise(r=>setTimeout(r,0));
+      }
+      if(done)break;
+    }
+    if(!recs.length){masterMsg('No se reconocieron productos en el Excel. Fijate que la hoja 1 tenga la fila de títulos (SKU ID, etc.).',true);}
+    else{
+      applyMaster(recs,[...depts],diag);
+      toast(recs.length.toLocaleString('es-AR')+' productos únicos cargados (de '+rowCount.toLocaleString('es-AR')+' filas)');
+    }
+  }catch(err){masterMsg('Error al leer el Excel: '+err.message,true);}
+  hideMasterLoading();
 }
 function renderDepts(){const el=$('depts');el.innerHTML='';if(DEPTS.length<=1)return;DEPTS.forEach(d=>{const c=document.createElement('span');c.className='dept-chip on';c.textContent='Dept '+d;c.onclick=()=>{c.classList.toggle('on');if(c.classList.contains('on'))DEPT_ON.add(d);else DEPT_ON.delete(d);refreshAllFilters();};el.appendChild(c);});}
 function masterInDepts(){return DEPT_ON.size?MASTER.filter(r=>!r.dept||DEPT_ON.has(r.dept)):MASTER;}
@@ -923,9 +1045,11 @@ $('clearMasterBtn').onclick=()=>{if(!confirm('\u00bfLimpiar el maestro cargado?'
 $('pasteTarget').addEventListener('paste',e=>{e.preventDefault();const t=(e.clipboardData||window.clipboardData).getData('text');loadMaster(t);});
 $('pasteTarget').addEventListener('focus',function(){if(this.textContent.indexOf('Clic')>=0)this.textContent='';});
 $('fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const xls=/\.xlsx?$/i.test(f.name);
+  // v10.5: los .xlsx grandes (maestro completo) van por el lector streaming
+  if(/\.xlsx$/i.test(f.name)&&f.size>BIG_XLSX_BYTES&&window.DecompressionStream){loadMasterXlsxBig(f);e.target.value='';return;}
   showMasterLoading('Leyendo '+f.name+'…');
   const r=new FileReader();
-  r.onload=()=>{xls?loadMasterXlsx(new Uint8Array(r.result)):loadMaster(r.result);};
+  r.onload=()=>{xls?loadMasterXlsx(new Uint8Array(r.result),f):loadMaster(r.result);};
   r.onerror=()=>{toast('No se pudo leer el archivo');hideMasterLoading();};
   xls?r.readAsArrayBuffer(f):r.readAsText(f);
   e.target.value='';});
