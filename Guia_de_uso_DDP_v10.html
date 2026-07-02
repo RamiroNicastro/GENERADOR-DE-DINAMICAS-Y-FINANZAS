@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de uso · Generador de Dinámicas y Financiaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f1ea;--panel:#fffdf8;--ink:#1c1a17;--muted:#6f685d;--line:#e3ddd0;
+    --amber:#e8a838;--amber-deep:#c8851a;--amber-soft:#fdf3dd;
+    --teal:#2f8f8a;--teal-deep:#226e6a;--teal-soft:#e3f1ef;
+    --ok:#2f7d4f;--warn:#c0392b;
+    --shadow:0 1px 2px rgba(40,34,24,.06),0 10px 34px rgba(40,34,24,.08);
+    --serif:"Fraunces",Georgia,serif;--sans:"Spline Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.62;
+    background-image:radial-gradient(circle at 1px 1px,rgba(40,34,24,.035) 1px,transparent 0);background-size:22px 22px}
+  .wrap{max-width:860px;margin:0 auto;padding:0 22px 100px}
+
+  /* portada */
+  header.cover{padding:64px 0 30px;border-bottom:2px solid var(--ink);margin-bottom:40px}
+  .kicker{font-size:.8rem;letter-spacing:.22em;text-transform:uppercase;color:var(--amber-deep);font-weight:700}
+  header.cover h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.3rem,6vw,3.6rem);line-height:1.02;margin:14px 0 0;letter-spacing:-.02em}
+  header.cover h1 em{font-style:italic;color:var(--amber-deep)}
+  header.cover .lead{font-size:1.12rem;color:var(--muted);margin:18px 0 0;max-width:62ch}
+  .meta{margin-top:22px;font-size:.86rem;color:var(--muted);font-family:var(--serif);font-style:italic}
+  .meta b{font-style:normal;color:var(--ink)}
+
+  /* índice */
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
+    padding:20px 24px;margin-bottom:48px}
+  .toc h2{font-family:var(--serif);font-size:1rem;margin:0 0 12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .toc ol{margin:0;padding:0;list-style:none;counter-reset:t;columns:2;column-gap:34px}
+  @media(max-width:600px){.toc ol{columns:1}}
+  .toc li{counter-increment:t;padding:5px 0;break-inside:avoid}
+  .toc a{color:var(--ink);text-decoration:none;font-weight:500;display:flex;gap:10px;align-items:baseline}
+  .toc a:before{content:counter(t,decimal-leading-zero);font-family:var(--serif);color:var(--amber-deep);font-weight:700;font-size:.85rem;min-width:26px}
+  .toc a:hover{color:var(--amber-deep)}
+
+  section{margin-bottom:52px;scroll-margin-top:20px}
+  .step-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+  .step-num{font-family:var(--serif);font-weight:700;font-size:2.2rem;color:var(--amber);line-height:1;flex:none;
+    -webkit-text-stroke:1px var(--amber-deep)}
+  h2.step{font-family:var(--serif);font-size:1.7rem;font-weight:600;margin:0;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:1rem;margin:2px 0 18px;padding-left:56px}
+  @media(max-width:600px){.sub{padding-left:0}}
+  p{margin:0 0 14px}
+  h3{font-family:var(--serif);font-size:1.15rem;font-weight:600;margin:26px 0 8px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:22px 24px;margin:18px 0}
+  .card.din{border-left:5px solid var(--amber)}
+  .card.fin{border-left:5px solid var(--teal)}
+  .card h4{margin:0 0 8px;font-family:var(--serif);font-size:1.1rem;font-weight:600}
+  .card.din h4{color:var(--amber-deep)}.card.fin h4{color:var(--teal-deep)}
+
+  ul.clean{margin:8px 0 14px;padding:0;list-style:none}
+  ul.clean li{position:relative;padding-left:24px;margin-bottom:9px}
+  ul.clean li:before{content:"›";position:absolute;left:4px;top:-1px;color:var(--amber-deep);font-weight:700;font-size:1.15rem}
+
+  code{background:#efe9dd;border-radius:5px;padding:1px 6px;font-size:.9em;font-family:"Fraunces",ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#5a4a1f}
+  kbd{background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 7px;font-size:.82em;font-family:var(--sans);font-weight:600}
+  .qm-demo{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--amber-soft);
+    color:var(--amber-deep);border:1px solid #eed9a8;font-size:.72rem;font-weight:700;vertical-align:middle}
+
+  .callout{border-radius:10px;padding:14px 18px;margin:16px 0;font-size:.95rem;display:flex;gap:12px;align-items:flex-start}
+  .callout .ic{font-size:1.15rem;line-height:1.3;flex:none}
+  .callout.tip{background:var(--amber-soft);border:1px solid #eed9a8}
+  .callout.warn{background:#fdecea;border:1px solid #e9a79e;color:#7e271b}
+  .callout.ok{background:#eef7f0;border:1px solid #bfe0c8;color:#1f6b40}
+  .callout b{font-weight:700}
+
+  table.tipos{width:100%;border-collapse:collapse;font-size:.92rem;margin:14px 0;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  table.tipos th,table.tipos td{padding:10px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  table.tipos thead th{background:#efe9dd;font-family:var(--sans);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  table.tipos tbody tr:last-child td{border-bottom:none}
+  table.tipos td.ej{font-family:"Fraunces",serif;font-weight:700;color:var(--amber-deep);white-space:nowrap;font-variant-numeric:tabular-nums}
+  table.tipos td.pat{white-space:nowrap;color:var(--muted)}
+  table.tipos tbody tr:hover td{background:var(--amber-soft)}
+
+  .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0;font-size:.9rem}
+  .flow .f{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 13px;font-weight:600;box-shadow:var(--shadow)}
+  .flow .arr{color:var(--amber-deep);font-weight:700;font-size:1.2rem}
+
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);text-align:center;color:var(--muted);font-size:.85rem}
+  footer .credit{font-family:var(--serif);font-style:italic;margin-top:8px}
+  footer .credit b{font-style:normal;color:var(--ink)}
+  .backtop{display:inline-block;margin-top:6px;font-size:.8rem;color:var(--amber-deep);text-decoration:none}
+
+  @media print{
+    body{background:#fff;font-size:12pt}
+    .toc,.backtop{display:none}
+    .card,table.tipos{box-shadow:none}
+    section{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="cover">
+    <div class="kicker">Guía rápida · versión 10</div>
+    <h1>Cómo usar el <em>Generador</em> de Dinámicas y Financiaciones</h1>
+    <p class="lead">Esta herramienta arma las filas de la hoja <b>Items</b> del template por vos: buscás los productos, completás los datos de la promo una sola vez y la app te da las filas listas para pegar. <b>Nunca toca el archivo del sistema</b>: solo prepara lo que después pegás en el template.</p>
+    <p class="meta">Pensada para quien ya conoce el template y se está sumando a usar la app. · Herramienta de <b>Ramiro Nicastro</b></p>
+  </header>
+
+  <nav class="toc">
+    <h2>En esta guía</h2>
+    <ol>
+      <li><a href="#abrir">Abrir la app</a></li>
+      <li><a href="#conceptos">Tres conceptos clave</a></li>
+      <li><a href="#modo">Elegir el modo</a></li>
+      <li><a href="#maestro">Cargar el maestro</a></li>
+      <li><a href="#campania">Datos de la campaña</a></li>
+      <li><a href="#acciones">Armar las acciones</a></li>
+      <li><a href="#manual">Carga manual: SKU vs EAN</a></li>
+      <li><a href="#tipos">Qué significa cada tipo</a></li>
+      <li><a href="#revisar">Revisar avisos y errores</a></li>
+      <li><a href="#exportar">Copiar, guardar y exportar</a></li>
+      <li><a href="#trucos">Trucos y reglas de oro</a></li>
+    </ol>
+  </nav>
+
+  <section id="abrir">
+    <div class="step-head"><span class="step-num">1</span><h2 class="step">Abrir la app</h2></div>
+    <p class="sub">Doble clic y listo. No necesita instalación ni internet.</p>
+    <p>Es un solo archivo (<code>generador_v10.html</code>). Hacé doble clic y se abre en el navegador. Funciona sin conexión, así que la podés tener en el escritorio y usarla cuando quieras.</p>
+    <div class="callout tip"><span class="ic">💡</span><div>Vas a ver muchos signos de pregunta <span class="qm-demo">?</span> al lado de los campos. <b>Pasá el mouse por encima</b> y aparece una explicación corta de para qué sirve ese campo. En celular o pantalla táctil, tocalo.</div></div>
+  </section>
+
+  <section id="conceptos">
+    <div class="step-head"><span class="step-num">2</span><h2 class="step">Tres conceptos clave</h2></div>
+    <p class="sub">Si entendés estos tres, ya entendiste la app.</p>
+    <div class="card din">
+      <h4>El maestro</h4>
+      <p style="margin:0">Es tu lista de productos (SKU, descripción, EAN, clase, subclase). La app lo usa para buscar productos y, sobre todo, para <b>completar el EAN solo</b>. Se carga una vez al principio.</p>
+    </div>
+    <div class="card fin">
+      <h4>La campaña (datos generales)</h4>
+      <p style="margin:0">Son los datos que valen para <b>todas</b> las filas: fechas, formato, testimonial, forecast, etc. Se cargan una sola vez arriba.</p>
+    </div>
+    <div class="card din">
+      <h4>Las acciones</h4>
+      <p style="margin:0">Cada acción es un grupo de productos con su propio <b>tipo</b> y <b>título</b> de promo (ej. todos los productos que van a <code>3x2</code>). Una campaña puede tener varias acciones.</p>
+    </div>
+    <div class="callout ok"><span class="ic">✓</span><div>En resumen: cargás el <b>maestro</b> una vez, los <b>datos de campaña</b> una vez, y después sumás las <b>acciones</b> que necesites. La app combina todo y arma las filas.</div></div>
+  </section>
+
+  <section id="modo">
+    <div class="step-head"><span class="step-num">3</span><h2 class="step">Elegir el modo</h2></div>
+    <p class="sub">Dinámica o Financiación. Son independientes.</p>
+    <p>Arriba hay un interruptor con dos opciones:</p>
+    <ul class="clean">
+      <li><b>Dinámica</b> (color ámbar): descuentos y cenefas. Lleva tipo y título.</li>
+      <li><b>Financiación</b> (color verde/teal): cuotas sin interés (CSI). Además del tipo y título, lleva <b>CENEFAS</b>, la <b>Financiación</b> (ej. <code>6 CSI VISA - MASTERCARD</code>) y el <b>EAN</b>.</li>
+    </ul>
+    <p>Cada modo tiene sus propios productos y acciones, así que podés trabajar uno sin pisar el otro. Si los mismos productos van a las dos cosas, usá el botón <b>⧉ Copiar estas acciones al otro sector</b> para no cargar dos veces (después revisás el tipo y la financiación en el destino).</p>
+  </section>
+
+  <section id="maestro">
+    <div class="step-head"><span class="step-num">4</span><h2 class="step">Cargar el maestro</h2></div>
+    <p class="sub">Panel 1. Se hace una sola vez por sesión (y queda guardado).</p>
+    <p>El maestro completo es muy pesado para el navegador, así que la idea es cargar <b>solo tu/s departamento/s</b>:</p>
+    <ul class="clean">
+      <li>En el maestro original, <b>filtrá tu/s departamento/s</b>.</li>
+      <li>Seleccioná desde la fila de títulos hacia abajo y copiá con <kbd>Ctrl</kbd>+<kbd>C</kbd>.</li>
+      <li>En la app, clic en el recuadro y pegá con <kbd>Ctrl</kbd>+<kbd>V</kbd>. (También podés usar <b>📁 Elegir archivo</b> y subir el Excel o CSV.)</li>
+    </ul>
+    <p>La app reconoce las columnas por su nombre y arma su propia lista, deduplicando los SKU repetidos. Una vez cargado, aparecen unos <b>chips de departamento</b> para activar o desactivar departamentos en la búsqueda.</p>
+    <div class="callout tip"><span class="ic">💡</span><div>El maestro queda <b>guardado</b> en esa computadora: la próxima vez que abras la app, ya está cargado.</div></div>
+  </section>
+
+  <section id="campania">
+    <div class="step-head"><span class="step-num">5</span><h2 class="step">Datos de la campaña</h2></div>
+    <p class="sub">Panel 2. Lo que vale para todas las filas.</p>
+    <ul class="clean">
+      <li><b>Desde / Hasta</b>: fechas de la promo. El Desde no puede ser pasado y el Hasta no puede ser anterior al Desde.</li>
+      <li><b>Formato</b>: en qué tipos de tienda aplica. Tildá los que correspondan (<code>PM</code>, <code>SPCH+</code>, <code>HCH+</code>, <code>CH+</code>). Si elegís tiendas con el botón <b>🏬 Elegir tiendas</b>, los formatos se tildan solos.</li>
+      <li><b>Testimonial / Exclusivo ecommerce / Forecast</b>: datos generales de la fila.</li>
+      <li><b>Campos opcionales</b>: Grupo (combo), Carga Exhibición, Región (tiendas específicas separadas por <code>;</code>) y Nombre de posición.</li>
+    </ul>
+    <div class="callout tip"><span class="ic">🏬</span><div>El botón <b>Elegir tiendas</b> abre una lista filtrable por formato, región y provincia. Al aplicar, escribe los números de tienda en <b>Región</b> y tilda los formatos correctos automáticamente.</div></div>
+  </section>
+
+  <section id="acciones">
+    <div class="step-head"><span class="step-num">6</span><h2 class="step">Armar las acciones</h2></div>
+    <p class="sub">Panel 3. Productos + tipo + título.</p>
+    <p>Cada tarjeta de acción tiene:</p>
+    <ul class="clean">
+      <li><b>Buscador de productos</b>: filtrá por departamento, clase y subclase (se acotan en cascada) o escribí en el buscador (por descripción o por SKU). Tildá los productos y agregalos; quedan como chips.</li>
+      <li><b>Carga manual</b>: para pegar SKU directamente. Tiene dos solapas (lo vemos en el punto siguiente).</li>
+      <li><b>Tipo de acción</b>: la mecánica de la promo (ej. <code>3x2</code>). Debajo del campo aparece una <b>explicación en vivo</b> de lo que escribís.</li>
+      <li><b>Título de acción</b>: el texto del cartel. Solo letras sin tilde, números, espacios y <code>$</code>.</li>
+      <li>En <b>Financiación</b>, además: CENEFAS (por defecto copia el título) y la Financiación del desplegable.</li>
+      <li><b>⚙ Pisar datos de campaña</b>: si una acción necesita una fecha, formato o región distinta de la general, la ponés acá y vale solo para esa acción.</li>
+    </ul>
+    <p>Para sumar otra acción, <b>+ Agregar otra acción</b>.</p>
+  </section>
+
+  <section id="manual">
+    <div class="step-head"><span class="step-num">7</span><h2 class="step">Carga manual: SKU vs Número + EAN</h2></div>
+    <p class="sub">Dos solapas, para dos situaciones distintas. No las mezcles.</p>
+    <div class="card din">
+      <h4>① Por SKU / Número</h4>
+      <p style="margin:0">Es la <b>forma recomendada</b>. Pegás los números de los productos (uno por línea) y la app <b>busca el EAN sola</b> en el maestro. Usala cuando los productos <b>sí están</b> en el maestro que cargaste.</p>
+    </div>
+    <div class="card fin">
+      <h4>② Número + EAN a mano</h4>
+      <p style="margin:0">Solo para productos que <b>no están</b> en el maestro (por eso la app no puede traer el EAN sola). Acá escribís las dos cosas: una línea por producto, con el <b>Número y el EAN</b> separados por un espacio o un tab.</p>
+    </div>
+    <p>Ejemplo de la solapa ②:</p>
+    <div class="card" style="border-left:5px solid var(--muted)"><code style="display:block;white-space:pre;line-height:1.7">215292782&#9;6974221241396
+210256066&#9;6974221240672</code></div>
+    <div class="callout warn"><span class="ic">⚠</span><div>En la solapa ②, si una línea tiene <b>solo el número y no el EAN</b>, esa línea se ignora (porque el punto de esta solapa es justamente cargar el EAN a mano). Para esos casos usá la solapa ①.</div></div>
+  </section>
+
+  <section id="tipos">
+    <div class="step-head"><span class="step-num">8</span><h2 class="step">Qué significa cada tipo de acción</h2></div>
+    <p class="sub">La misma tabla que está dentro de la app, en “¿Qué significa cada tipo?”.</p>
+    <p>Lo que escribís en <b>Tipo de acción</b> tiene que coincidir con alguno de estos formatos. <code>N</code> y <code>M</code> son cantidades, <code>$N</code> es un precio y <code>%</code> es un porcentaje. Funciona con mayúsculas o minúsculas.</p>
+    <table class="tipos">
+      <thead><tr><th>Se escribe</th><th>Ejemplo</th><th>Qué quiere decir</th></tr></thead>
+      <tbody>
+        <tr><td class="pat">NxM</td><td class="ej">3x2</td><td>Pagás M, te llevás N. <code>3x2</code> = pagás 2 y te llevás 3. (N tiene que ser mayor que M.)</td></tr>
+        <tr><td class="pat">Nx%</td><td class="ej">1x30%</td><td>N unidad(es) con ese % de descuento. <code>1x30%</code> = una unidad con 30% off.</td></tr>
+        <tr><td class="pat">$N</td><td class="ej">$5</td><td>1 unidad a ese precio fijo. <code>$5</code> = la unidad cuesta $5.</td></tr>
+        <tr><td class="pat">Nx$N</td><td class="ej">2x$20</td><td>N unidades por ese precio total. <code>2x$20</code> = 2 unidades por $20 en total.</td></tr>
+        <tr><td class="pat">#Nx%</td><td class="ej">#2x80%</td><td>La N-ésima unidad con ese % off. <code>#2x80%</code> = la 2.ª unidad al 80% de descuento.</td></tr>
+        <tr><td class="pat">Dx$Nkg</td><td class="ej">3.5x$30kg</td><td>Desde D kilos, a ese precio por kilo. <code>3.5x$30kg</code> = desde 3,5 kg, $30 el kilo.</td></tr>
+        <tr><td class="pat">Dkgx%</td><td class="ej">1.5kgx30%</td><td>Desde D kilos, con ese % off. <code>1.5kgx30%</code> = desde 1,5 kg, 30% off.</td></tr>
+        <tr><td class="pat">Nx$Ncu</td><td class="ej">2x$20cu</td><td>N unidades a ese precio cada una. <code>2x$20cu</code> = 2 unidades a $20 cada una.</td></tr>
+        <tr><td class="pat">A+B $N</td><td class="ej">1+1 $300</td><td>Combo: llevando esas unidades juntas, todo por ese precio. <code>1+1 $300</code> = combo de 2 por $300.</td></tr>
+        <tr><td class="pat">A+B+C $N</td><td class="ej">1+1+1 $300</td><td>Igual que el combo anterior pero de 3 productos por ese total.</td></tr>
+        <tr><td class="pat">A+BG</td><td class="ej">2+1G</td><td>Llevás los primeros y el último gratis (G = gratis). <code>2+1G</code> = llevás 2 y el 3.º gratis.</td></tr>
+        <tr><td class="pat">A+B %</td><td class="ej">1+1 30%</td><td>Combo con ese % de descuento sobre el total. <code>1+1 30%</code> = el combo con 30% off.</td></tr>
+        <tr><td class="pat">A+B -$N</td><td class="ej">1+1 -$100</td><td>Combo en el que te descuentan ese monto. <code>1+1 -$100</code> = con el combo, ahorrás $100.</td></tr>
+        <tr><td class="pat">+Nx%</td><td class="ej">+2x15%</td><td>Llevando N o más, ese % off. <code>+2x15%</code> = a partir de 2 unidades, 15% off.</td></tr>
+        <tr><td class="pat">+Nx$N</td><td class="ej">+2x$100</td><td>Llevando N o más, ese precio cada una. <code>+2x$100</code> = a partir de 2 unidades, $100 cada una.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="revisar">
+    <div class="step-head"><span class="step-num">9</span><h2 class="step">Revisar avisos y errores</h2></div>
+    <p class="sub">La app te avisa antes de que pegues algo mal.</p>
+    <ul class="clean">
+      <li><b>⛔ Errores (en rojo)</b>: bloquean. Mientras haya errores, no podés copiar ni descargar. Ejemplos: producto sin tipo o título, tipo inválido, título con tilde o ñ, fecha en el pasado, financiación sin EAN.</li>
+      <li><b>⚠ Avisos (en ámbar)</b>: no bloquean, son para que mires. Ejemplo: el mismo tipo escrito distinto en dos acciones (<code>1x30%</code> vs <code>1X30%</code>).</li>
+    </ul>
+    <p>Abajo también hay un panel que marca los <b>SKU que aparecen en más de una acción</b> (descuentos que se podrían acumular), por las dudas.</p>
+  </section>
+
+  <section id="exportar">
+    <div class="step-head"><span class="step-num">10</span><h2 class="step">Copiar, guardar y exportar</h2></div>
+    <p class="sub">Cuando no hay errores, la vista previa se habilita.</p>
+    <div class="flow">
+      <span class="f">📋 Copiar filas</span><span class="arr">→</span>
+      <span class="f">Abrí el template</span><span class="arr">→</span>
+      <span class="f">Celda <b>A2</b> de <b>Items</b></span><span class="arr">→</span>
+      <span class="f"><kbd>Ctrl</kbd>+<kbd>V</kbd></span>
+    </div>
+    <ul class="clean">
+      <li><b>📋 Copiar filas para Items</b>: copia todo y lo pegás desde la celda <b>A2</b> de la hoja Items. (El resto de las hojas del template no se tocan.)</li>
+      <li><b>💾 Guardar corrida</b>: guarda el trabajo con el nombre del evento, para retomarlo después en esa computadora.</li>
+      <li><b>⬇ Descargar Excel</b>: baja un Excel con las filas, como registro.</li>
+    </ul>
+    <div class="callout ok"><span class="ic">✓</span><div>La app <b>no modifica</b> el archivo del sistema. Solo arma las filas; el template lo manejás vos como siempre.</div></div>
+  </section>
+
+  <section id="trucos">
+    <div class="step-head"><span class="step-num">11</span><h2 class="step">Trucos y reglas de oro</h2></div>
+    <p class="sub">Para que salga redondo.</p>
+    <ul class="clean">
+      <li>Los <b>títulos</b> van sin tildes ni ñ (el sistema no los acepta). Si ponés “Jabón”, la app te lo marca.</li>
+      <li>El <b>EAN</b> sale del maestro; no hace falta inventarlo. Solo lo cargás a mano (solapa ②) si el producto no está en el maestro.</li>
+      <li>En <b>Financiación</b> no puede faltar el EAN ni la financiación: si faltan, la app bloquea hasta que estén.</li>
+      <li>¿Los mismos productos van a Dinámica y Financiación? Cargalos en un sector y usá <b>⧉ Copiar al otro sector</b>.</li>
+      <li>¿Dudás de un campo? Pasá el mouse por el <span class="qm-demo">?</span> de al lado.</li>
+      <li>¿Dudás de un tipo? Tocá <b>“¿Qué significa cada tipo?”</b> (arriba o al lado del campo Tipo).</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Generador de Dinámicas y Financiaciones · Guía de uso v10</p>
+    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b></p>
+    <a class="backtop" href="#">↑ Volver arriba</a>
+  </footer>
+
+</div>
+</body>
+</html>
