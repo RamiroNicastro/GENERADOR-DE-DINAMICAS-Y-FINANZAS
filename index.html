@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Dinámicas y Financiaciones · v10.4</title>
+<title>Generador de Dinámicas y Financiaciones · v10.6</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -134,9 +134,19 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .results td,.results th{padding:5px 8px;border-bottom:1px solid #f0ebe0;text-align:left;white-space:nowrap}
   .results th{position:sticky;top:0;background:var(--gray-head);font-size:.68rem;text-transform:uppercase}
   .results tr:hover td{background:var(--accent-soft)}
+  .results tbody tr{cursor:pointer}
+  .results tr.is-sel td{background:#eef7f0}
   .results .desc{white-space:normal;min-width:160px}
   .res-actions{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;background:#fbf7ee;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:3}
-  .selected{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .selected{margin-top:10px}
+  .sel-tools{display:none;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .sel-tools.show{display:flex}
+  .sel-find{flex:1;min-width:150px;max-width:300px;padding:5px 10px;border:1px solid var(--line);border-radius:7px;font-size:.8rem;font-family:var(--sans)}
+  .sel-find:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .sel-clear{border:1px solid var(--line);background:#fff;border-radius:7px;padding:4px 10px;font-size:.76rem;color:var(--warn);cursor:pointer;white-space:nowrap}
+  .sel-clear:hover{border-color:var(--warn)}
+  .sel-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .sel-chips .empty-find{font-size:.78rem;color:var(--muted);padding:2px}
   .chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid #eed9a8;border-radius:7px;padding:3px 8px;font-size:.78rem;font-variant-numeric:tabular-nums}
   body.mode-fin .chip{border-color:#bfe0dc}
   .chip-toggle{display:inline-flex;align-items:center;background:#fff;border:1px dashed var(--line);border-radius:7px;padding:3px 10px;font-size:.76rem;color:var(--muted);cursor:pointer;font-weight:600}
@@ -240,6 +250,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .modal-results th,.modal-results td{padding:9px 14px;border-bottom:1px solid #f0ebe0;text-align:left}
   .modal-results th{position:sticky;top:0;background:var(--gray-head);font-size:.72rem;text-transform:uppercase;z-index:2;white-space:nowrap}
   .modal-results td.desc{min-width:240px}
+  .modal-results tbody tr{cursor:pointer}
   .modal-results tr:hover td{background:var(--accent-soft)}
   .modal-results tr.is-sel td{background:#eef7f0}
   .modal-results .ck{width:34px;text-align:center}
@@ -249,6 +260,19 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .modal-foot .mf-count{font-size:.86rem;color:var(--muted)}
   .modal-foot .mf-count b{color:var(--ok)}
   .modal-foot .spacer{flex:1}
+  /* v10.6: el modal ocupa menos en celular y los botones entran cómodos */
+  @media(max-width:760px){
+    .modal-back{padding:0}
+    .modal{border-radius:0;max-width:none}
+    .modal-head{padding:10px 14px;gap:8px}
+    .modal-filters{padding:10px 14px}
+    .modal-facets{padding:8px 14px}
+    .facet-chips{max-height:72px}
+    .modal-results th,.modal-results td{padding:7px 8px}
+    .modal-results td.desc{min-width:150px}
+    .modal-foot{padding:10px 12px;gap:8px}
+    .modal-foot .btn{font-size:.78rem;padding:8px 10px}
+  }
   body.mode-fin .search-row .search:focus{border-color:var(--accent)}
 
   /* ===== v9: cargar formatos desde template ===== */
@@ -479,7 +503,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <div class="foot">
     <p>El archivo del sistema no se modifica. Esta herramienta solo arma las filas. Dinámica y Financiación son independientes (cada una con sus productos y parámetros). Usá “Copiar estas acciones al otro sector” para no cargar dos veces.</p>
-    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.4</p>
+    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.6</p>
   </div>
 </div>
 
@@ -494,7 +518,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <div class="field m-search"><label>Buscar (descripción, SKU, clase, subclase)</label><input id="mSearch" placeholder="ej. parrilla · o pegá un SKU" autocomplete="off"></div>
     </div>
     <div class="modal-facets">
-      <div class="facets-note">Tocá una clase o subclase: <b>1 clic la incluye ✓</b> · <b>2 clics la excluye ✕</b> · <b>3 clics la saca del filtro</b>. Podés combinar varias (ej. tildar 2 clases y excluir 1 subclase).</div>
+      <div class="facets-note"><b>Tildá un producto para agregarlo, destildalo para quitarlo</b> — se aplica al instante, no hace falta guardar. Filtros: <b>1 clic incluye ✓</b> · <b>2 excluye ✕</b> · <b>3 lo saca</b>.</div>
       <div class="facet">
         <div class="facet-head"><label>Clase</label><input class="facet-find" id="mClaseFind" placeholder="filtrar clases…" autocomplete="off"><button type="button" class="facet-clear" id="mClaseClear">limpiar</button></div>
         <div class="facet-chips" id="mClaseChips"></div>
@@ -507,10 +531,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <div class="modal-body"><table class="modal-results" id="mResults"><thead></thead><tbody></tbody></table></div>
     <div class="modal-foot">
       <span class="mf-count" id="mCount">0 resultados</span>
+      <span class="mf-count">🛒 <b id="mSelCount">0</b> en esta acción</span>
       <span class="spacer"></span>
       <button type="button" class="btn btn-amber btn-sm" id="mSelAll">➕ Agregar todos los que coinciden</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="mSelNone">Destildar</button>
-      <button type="button" class="btn btn-amber" id="mAdd">Agregar seleccionados (<b id="mSelCount">0</b>)</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="mSelNone">− Quitar todos los que coinciden</button>
+      <button type="button" class="btn btn-amber" id="mAdd">✓ Listo</button>
     </div>
   </div>
 </div>
@@ -972,10 +997,21 @@ function openSearchModal(card){
   $('searchModal').classList.add('show');
   setTimeout(()=>$('mSearch').focus(),50);
 }
-function closeSearchModal(){$('searchModal').classList.remove('show');MODAL.card=null;}
+function closeSearchModal(){
+  const card=MODAL.card;
+  $('searchModal').classList.remove('show');MODAL.card=null;
+  if(card&&card._refresh)card._refresh(); // refrescar la búsqueda chica de la card al volver
+}
+/* v10.6: tildar/destildar agrega o quita al instante */
+function toggleProdInCard(card,num,ean,desc,on){
+  const i=card._prods.findIndex(p=>p.num===num);
+  if(on&&i<0)card._prods.push({num,ean:ean||'',desc:desc||''});
+  else if(!on&&i>=0)card._prods.splice(i,1);
+  if(card._renderSel)card._renderSel();
+}
 function updateModalSelCount(){
-  const n=$('mResults').querySelectorAll('tbody input[type=checkbox]:checked:not(:disabled)').length;
-  $('mSelCount').textContent=n;
+  const card=MODAL.card;if(!card)return;
+  $('mSelCount').textContent=(card._prods||[]).length.toLocaleString('es-AR');
 }
 function runModalSearch(){
   const card=MODAL.card;if(!card)return;
@@ -1000,26 +1036,24 @@ function runModalSearch(){
     const isSel=already.has(r.num);
     const used=usage.get(r.num);
     const usedTag=used?`<span class="used" title="Ya está en: ${used.join(', ')}">↺ ${used.length} acción(es)</span>`:'';
-    h+=`<tr class="${isSel?'is-sel':''}"><td class="ck"><input type="checkbox" data-num="${r.num}" data-ean="${r.ean}" data-desc="${(r.desc||'').replace(/"/g,'&quot;')}" ${isSel?'checked disabled':''}></td>`+
+    h+=`<tr class="${isSel?'is-sel':''}"><td class="ck"><input type="checkbox" data-num="${r.num}" data-ean="${r.ean}" data-desc="${(r.desc||'').replace(/"/g,'&quot;')}" ${isSel?'checked':''}></td>`+
        `<td class="num">${r.num}${usedTag}</td><td class="desc">${r.desc||''}</td><td>${r.clase||''}</td><td>${r.subclase||''}</td><td class="ean">${r.ean||''}</td></tr>`;
   });
   tbody.innerHTML=h;
   const noFilter=!F.clIn.size&&!F.clEx.size&&!F.subIn.size&&!F.subEx.size;
   $('mCount').textContent=allHits.length+' coinciden'+(allHits.length>CAP?` · se muestran ${CAP}`:'')+((q.length<1&&noFilter)?' · escribí o filtrá para acotar':'');
-  tbody.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.addEventListener('change',updateModalSelCount));
+  // tildar = agregar · destildar = quitar, al instante; el clic en la fila también tilda
+  tbody.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.addEventListener('change',()=>{
+    toggleProdInCard(card,cb.dataset.num,cb.dataset.ean,cb.dataset.desc,cb.checked);
+    cb.closest('tr').classList.toggle('is-sel',cb.checked);
+    updateModalSelCount();
+  }));
+  tbody.querySelectorAll('tr').forEach(tr=>tr.addEventListener('click',e=>{
+    if(e.target.closest('input'))return;
+    const cb=tr.querySelector('input[type=checkbox]');if(!cb)return;
+    cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));
+  }));
   updateModalSelCount();
-}
-function addModalSelection(){
-  const card=MODAL.card;if(!card)return;
-  let added=0;
-  $('mResults').querySelectorAll('tbody input[type=checkbox]:checked:not(:disabled)').forEach(cb=>{
-    const num=cb.dataset.num;if(card._prods.some(p=>p.num===num))return;
-    card._prods.push({num,ean:cb.dataset.ean||'',desc:cb.dataset.desc||''});added++;
-  });
-  if(card._renderSel)card._renderSel();
-  if(card._refresh)card._refresh();
-  toast(added+' producto(s) agregados');
-  closeSearchModal();
 }
 $('mSearch').addEventListener('input',runModalSearch);
 $('mClaseFind').addEventListener('input',fillModalFilters);
@@ -1027,17 +1061,25 @@ $('mSubFind').addEventListener('input',fillModalSub);
 $('mClaseClear').onclick=()=>{const F=MODAL.f;F.clIn.clear();F.clEx.clear();$('mClaseFind').value='';fillModalFilters();runModalSearch();};
 $('mSubClear').onclick=()=>{const F=MODAL.f;F.subIn.clear();F.subEx.clear();$('mSubFind').value='';fillModalSub();runModalSearch();};
 $('modalCloseTop').onclick=closeSearchModal;
-$('mAdd').onclick=addModalSelection;
+$('mAdd').onclick=closeSearchModal;
 $('mSelAll').onclick=()=>{
   const card=MODAL.card;if(!card||!MODAL._allHits)return;
   let added=0;
   MODAL._allHits.forEach(r=>{if(card._prods.some(p=>p.num===r.num))return;card._prods.push({num:r.num,ean:r.ean||'',desc:r.desc||''});added++;});
   if(card._renderSel)card._renderSel();
-  if(card._refresh)card._refresh();
-  toast(added?added+' producto(s) agregado(s)':'ya estaban todos agregados');
-  closeSearchModal();
+  toast(added?added+' producto(s) agregado(s) — podés seguir buscando':'ya estaban todos agregados');
+  runModalSearch(); // el modal queda abierto para seguir refinando (ej. destildar excepciones)
 };
-$('mSelNone').onclick=()=>{$('mResults').querySelectorAll('tbody input[type=checkbox]:not(:disabled)').forEach(cb=>cb.checked=false);updateModalSelCount();};
+$('mSelNone').onclick=()=>{
+  const card=MODAL.card;if(!card||!MODAL._allHits)return;
+  const nums=new Set(MODAL._allHits.map(r=>r.num));
+  const before=card._prods.length;
+  card._prods=card._prods.filter(p=>!nums.has(p.num));
+  const removed=before-card._prods.length;
+  if(card._renderSel)card._renderSel();
+  toast(removed?removed+' producto(s) quitado(s)':'ninguno de estos estaba agregado');
+  runModalSearch();
+};
 $('searchModal').addEventListener('click',e=>{if(e.target===$('searchModal'))closeSearchModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('searchModal').classList.contains('show'))closeSearchModal();});
 
@@ -1080,7 +1122,7 @@ function addAction(){
       </div>
       <div class="search-row">
         <input class="search" placeholder="ej. parrilla · o pegá un SKU" autocomplete="off">
-        <button type="button" class="btn btn-ghost btn-sm search-open" title="Abrir la búsqueda en una ventana grande">⤢ Pantalla completa</button>
+        <button type="button" class="btn btn-ghost btn-sm search-open" title="Abrir la búsqueda en una ventana grande, con filtros de clase y subclase">⤢ Búsqueda grande</button>
       </div>
       <div class="results"></div>
     </div>
@@ -1164,26 +1206,49 @@ function addAction(){
 
   const CHIP_CAP=8; // cuántos chips se ven antes de plegar
   card._chipsOpen=false;
-  function renderSel(){
-    selEl.innerHTML='';
+  // v10.6: panel de agregados con buscador para encontrar y quitar rápido + quitar todos
+  selEl.innerHTML='<div class="sel-tools"><input class="sel-find" placeholder="buscar entre los agregados (para quitar)…" autocomplete="off"><button type="button" class="sel-clear">✕ Quitar todos</button></div><div class="sel-chips"></div>';
+  const selTools=selEl.querySelector('.sel-tools'),selFind=selEl.querySelector('.sel-find'),selChips=selEl.querySelector('.sel-chips');
+  selFind.addEventListener('input',renderSelChips);
+  selEl.querySelector('.sel-clear').onclick=()=>{
+    const n=card._prods.length;if(!n)return;
+    if(!confirm('¿Quitar los '+n+' productos de esta acción?'))return;
+    card._prods=[];card._chipsOpen=false;selFind.value='';renderSel();toast(n+' producto(s) quitado(s)');
+  };
+  function renderSelChips(){
+    selChips.innerHTML='';
+    const q=selFind.value.trim().toLowerCase();
     const total=card._prods.length;
-    const open=card._chipsOpen;
-    const limit=open?total:CHIP_CAP;
-    card._prods.forEach((p,i)=>{
-      if(i>=limit)return; // pasa el tope y está plegado → no se dibuja
+    let list=card._prods.map((p,i)=>({p,i}));
+    if(q)list=list.filter(({p})=>p.num.includes(q)||(p.desc||'').toLowerCase().includes(q));
+    const open=card._chipsOpen||!!q; // mientras se busca, se muestran todos los que coinciden
+    const shown=open?list:list.slice(0,CHIP_CAP);
+    shown.forEach(({p,i})=>{
       const ch=document.createElement('span');ch.className='chip';
-      ch.innerHTML=`<b>${p.num}</b>${p.desc?' · '+p.desc.slice(0,22):''} <span class="x">✕</span>`;
-      ch.querySelector('.x').onclick=()=>{card._prods.splice(i,1);if(card._prods.length<=CHIP_CAP)card._chipsOpen=false;renderSel();render();};
-      selEl.appendChild(ch);
+      ch.innerHTML=`<b>${p.num}</b>${p.desc?' · '+p.desc.slice(0,22):''} <span class="x" title="Quitar de esta acción">✕</span>`;
+      ch.querySelector('.x').onclick=()=>{card._prods.splice(i,1);if(card._prods.length<=CHIP_CAP)card._chipsOpen=false;renderSel();};
+      selChips.appendChild(ch);
     });
-    // botón ver todos / ver menos
-    if(total>CHIP_CAP){
+    if(q&&!list.length){const d=document.createElement('span');d.className='empty-find';d.textContent='ningún agregado coincide con la búsqueda';selChips.appendChild(d);}
+    if(q&&list.length>1){
+      const b=document.createElement('button');b.type='button';b.className='sel-clear';
+      b.textContent='✕ Quitar estos '+list.length;
+      b.onclick=()=>{const nums=new Set(list.map(({p})=>p.num));card._prods=card._prods.filter(p=>!nums.has(p.num));renderSel();toast(nums.size+' producto(s) quitado(s)');};
+      selChips.appendChild(b);
+    }
+    if(!q&&total>CHIP_CAP){
       const tog=document.createElement('button');
       tog.type='button';tog.className='chip-toggle';
       tog.textContent=open?'▲ ver menos':`▾ ver todos (${total})`;
-      tog.onclick=()=>{card._chipsOpen=!card._chipsOpen;renderSel();};
-      selEl.appendChild(tog);
+      tog.onclick=()=>{card._chipsOpen=!card._chipsOpen;renderSelChips();};
+      selChips.appendChild(tog);
     }
+  }
+  function renderSel(){
+    const total=card._prods.length;
+    selTools.classList.toggle('show',total>CHIP_CAP);
+    if(total<=CHIP_CAP&&selFind.value)selFind.value='';
+    renderSelChips();
     ccEl.textContent=total;render();
   }
   card._renderSel=renderSel;
@@ -1273,24 +1338,38 @@ function addAction(){
       if(q.length<2 || r.desc.toLowerCase().includes(q)||r.clase.toLowerCase().includes(q)||r.subclase.toLowerCase().includes(q)||r.num.includes(q)){allHits.push(r);}}
     const hits=allHits.slice(0,DISP);                 // solo estos se dibujan
     const nuevos=allHits.filter(r=>!sel.has(r.num)).length;  // cuántos se sumarían (sin contar los ya elegidos)
+    const yaEn=allHits.length-nuevos;                        // cuántos de estos ya están en la acción
     const totalTxt=allHits.length+' coinciden'+(allHits.length>DISP?` · se muestran ${DISP}`:'');
-    let h=`<div class="res-actions"><span class="mini">${totalTxt}</span><span><button class="btn btn-amber btn-sm" type="button" data-all style="margin-right:6px">➕ Agregar todos (${nuevos})</button><button class="btn btn-ghost btn-sm" type="button" data-add>Agregar tildados</button></span></div>`;
+    let h=`<div class="res-actions"><span class="mini">${totalTxt} · tildá = agregar · destildá = quitar</span><span><button class="btn btn-amber btn-sm" type="button" data-all style="margin-right:6px">➕ Agregar todos (${nuevos})</button><button class="btn btn-ghost btn-sm" type="button" data-none${yaEn?'':' style="display:none"'}>− Quitar todos (${yaEn})</button></span></div>`;
     h+='<table><thead><tr><th></th><th>Número</th><th>Descripción</th><th>Clase</th><th>Subclase</th><th>EAN</th></tr></thead><tbody>';
-    hits.forEach(r=>{const used=usage.get(r.num);const usedTag=used?` <span class="used" title="Ya está en: ${used.join(', ')}">↺ ${used.length}</span>`:'';h+=`<tr><td><input type="checkbox" data-num="${r.num}" data-ean="${r.ean}" data-desc="${(r.desc||'').replace(/"/g,'&quot;')}" ${sel.has(r.num)?'checked disabled':''}></td><td>${r.num}${usedTag}</td><td class="desc">${r.desc}</td><td>${r.clase}</td><td>${r.subclase}</td><td>${r.ean}</td></tr>`;});
+    hits.forEach(r=>{const used=usage.get(r.num);const usedTag=used?` <span class="used" title="Ya está en: ${used.join(', ')}">↺ ${used.length}</span>`:'';h+=`<tr class="${sel.has(r.num)?'is-sel':''}"><td><input type="checkbox" data-num="${r.num}" data-ean="${r.ean}" data-desc="${(r.desc||'').replace(/"/g,'&quot;')}" ${sel.has(r.num)?'checked':''}></td><td>${r.num}${usedTag}</td><td class="desc">${r.desc}</td><td>${r.clase}</td><td>${r.subclase}</td><td>${r.ean}</td></tr>`;});
     h+='</tbody></table>';
     resultsEl.innerHTML=h;resultsEl.classList.add('show');
-    // ➕ Agregar TODOS los que coinciden — agrega el set completo del filtro, no solo lo dibujado
+    // tildar/destildar aplica al instante (v10.6); el clic en la fila también tilda
+    resultsEl.querySelectorAll('tbody input[type=checkbox]').forEach(cb=>cb.addEventListener('change',()=>{
+      toggleProdInCard(card,cb.dataset.num,cb.dataset.ean,cb.dataset.desc,cb.checked);
+      cb.closest('tr').classList.toggle('is-sel',cb.checked);
+    }));
+    resultsEl.querySelectorAll('tbody tr').forEach(tr=>tr.addEventListener('click',e=>{
+      if(e.target.closest('input'))return;
+      const cb=tr.querySelector('input[type=checkbox]');if(!cb)return;
+      cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));
+    }));
+    // ➕ Agregar TODOS los que coinciden — agrega el set completo del filtro, no solo lo dibujado.
+    // La lista queda abierta para poder destildar excepciones ahí mismo.
     resultsEl.querySelector('[data-all]').onclick=()=>{
       let added=0;
       allHits.forEach(r=>{if(card._prods.some(p=>p.num===r.num))return;card._prods.push({num:r.num,ean:r.ean||'',desc:r.desc||''});added++;});
-      renderSel();searchEl.value='';resultsEl.classList.remove('show');resultsEl.innerHTML='';
-      toast(added?added+' producto(s) agregado(s)':'ya estaban todos agregados');
+      renderSel();doSearch();
+      toast(added?added+' producto(s) agregado(s) — destildá los que no van':'ya estaban todos agregados');
     };
-    resultsEl.querySelector('[data-add]').onclick=()=>{
-      resultsEl.querySelectorAll('input[type=checkbox]:checked:not(:disabled)').forEach(cb=>{
-        const num=cb.dataset.num;if(card._prods.some(p=>p.num===num))return;
-        card._prods.push({num,ean:cb.dataset.ean||'',desc:cb.dataset.desc||''});});
-      renderSel();searchEl.value='';resultsEl.classList.remove('show');resultsEl.innerHTML='';
+    resultsEl.querySelector('[data-none]').onclick=()=>{
+      const nums=new Set(allHits.map(r=>r.num));
+      const before=card._prods.length;
+      card._prods=card._prods.filter(p=>!nums.has(p.num));
+      const removed=before-card._prods.length;
+      renderSel();doSearch();
+      toast(removed?removed+' producto(s) quitado(s)':'ninguno estaba agregado');
     };
   }
   card._doSearch=doSearch;
