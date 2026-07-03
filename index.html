@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Dinámicas y Financiaciones · v10.6</title>
+<title>Generador de Dinámicas y Financiaciones · v10.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -225,8 +225,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .modal-filters input,.modal-filters select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:7px;font-family:var(--sans);font-size:.9rem;background:#fff}
   .modal-filters input:focus,.modal-filters select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
   /* v10.4: filtros de clase/subclase por chips (incluir/excluir) */
-  .modal-facets{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:10px 22px 12px;border-bottom:1px solid var(--line);background:#fff}
-  @media(max-width:760px){.modal-facets{grid-template-columns:1fr}}
+  .modal-facets{display:grid;grid-template-columns:.7fr 1fr 1fr;gap:12px;padding:10px 22px 12px;border-bottom:1px solid var(--line);background:#fff}
+  .modal-facets .facet-dept[hidden]{display:none}
+  @media(max-width:980px){.modal-facets{grid-template-columns:1fr 1fr}.modal-facets .facet-dept{grid-column:1/-1}}
+  @media(max-width:760px){.modal-facets{grid-template-columns:1fr}.modal-facets .facet-dept{grid-column:auto}}
   .facets-note{grid-column:1/-1;font-size:.72rem;color:var(--muted)}
   .facets-note b{color:var(--ink)}
   .facet-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
@@ -503,7 +505,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <div class="foot">
     <p>El archivo del sistema no se modifica. Esta herramienta solo arma las filas. Dinámica y Financiación son independientes (cada una con sus productos y parámetros). Usá “Copiar estas acciones al otro sector” para no cargar dos veces.</p>
-    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.6</p>
+    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.7</p>
   </div>
 </div>
 
@@ -519,6 +521,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     </div>
     <div class="modal-facets">
       <div class="facets-note"><b>Tildá un producto para agregarlo, destildalo para quitarlo</b> — se aplica al instante, no hace falta guardar. Filtros: <b>1 clic incluye ✓</b> · <b>2 excluye ✕</b> · <b>3 lo saca</b>.</div>
+      <div class="facet facet-dept" id="mDeptFacet">
+        <div class="facet-head"><label>Depto</label><input class="facet-find" id="mDeptFind" placeholder="filtrar deptos…" autocomplete="off"><button type="button" class="facet-clear" id="mDeptClear">limpiar</button></div>
+        <div class="facet-chips" id="mDeptChips"></div>
+      </div>
       <div class="facet">
         <div class="facet-head"><label>Clase</label><input class="facet-find" id="mClaseFind" placeholder="filtrar clases…" autocomplete="off"><button type="button" class="facet-clear" id="mClaseClear">limpiar</button></div>
         <div class="facet-chips" id="mClaseChips"></div>
@@ -925,7 +931,7 @@ function masterInDepts(){return DEPT_ON.size?MASTER.filter(r=>!r.dept||DEPT_ON.h
 function refreshAllFilters(){document.querySelectorAll('.action-card').forEach(c=>c._refreshFilters&&c._refreshFilters());}
 
 /* ===== v9: modal de búsqueda compartido (pantalla completa) ===== */
-const MODAL={card:null,f:{clIn:new Set(),clEx:new Set(),subIn:new Set(),subEx:new Set()}};
+const MODAL={card:null,f:{dIn:new Set(),dEx:new Set(),clIn:new Set(),clEx:new Set(),subIn:new Set(),subEx:new Set()}};
 function skuUsageMap(exceptCard){
   // mapa num -> [nombres de acciones donde ya está] (excluyendo la card actual)
   const m=new Map();
@@ -947,7 +953,8 @@ function renderChips(el,counts,inSet,exSet,findVal,onClick){
   [...inSet].forEach(k=>{if(!counts.has(k))inSet.delete(k);});
   [...exSet].forEach(k=>{if(!counts.has(k))exSet.delete(k);});
   const q=(findVal||'').trim().toLowerCase();
-  const keys=[...counts.keys()].sort().filter(k=>!q||k.toLowerCase().includes(q));
+  // orden numérico cuando corresponde (deptos: 2 antes que 10), alfabético para el resto
+  const keys=[...counts.keys()].sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).filter(k=>!q||k.toLowerCase().includes(q));
   el.innerHTML='';
   if(!keys.length){const d=document.createElement('div');d.className='empty';d.textContent=q?'sin coincidencias':'—';el.appendChild(d);return;}
   keys.forEach(k=>{
@@ -960,15 +967,31 @@ function renderChips(el,counts,inSet,exSet,findVal,onClick){
     el.appendChild(chip);
   });
 }
+/* v10.7: filas del maestro visibles según los chips de depto del modal */
+function modalScope(){
+  const F=MODAL.f;
+  return masterInDepts().filter(r=>{
+    const d=String(r.dept||'');
+    if(F.dIn.size&&!F.dIn.has(d))return false;
+    if(F.dEx.has(d))return false;
+    return true;
+  });
+}
 function fillModalFilters(){
-  const F=MODAL.f,data=masterInDepts();
+  const F=MODAL.f;
+  // deptos: sobre todo el maestro visible; clase/subclase se acotan al depto elegido
+  const dCounts=new Map();
+  masterInDepts().forEach(r=>{if(r.dept)dCounts.set(String(r.dept),(dCounts.get(String(r.dept))||0)+1);});
+  $('mDeptFacet').hidden=dCounts.size<=1;
+  renderChips($('mDeptChips'),dCounts,F.dIn,F.dEx,$('mDeptFind').value,()=>{fillModalFilters();runModalSearch();});
+  const data=modalScope();
   const counts=new Map();
   data.forEach(r=>{if(r.clase)counts.set(r.clase,(counts.get(r.clase)||0)+1);});
   renderChips($('mClaseChips'),counts,F.clIn,F.clEx,$('mClaseFind').value,()=>{fillModalFilters();fillModalSub();runModalSearch();});
   fillModalSub();
 }
 function fillModalSub(){
-  const F=MODAL.f,data=masterInDepts();
+  const F=MODAL.f,data=modalScope();
   const counts=new Map();
   data.forEach(r=>{
     if(!r.subclase)return;
@@ -984,12 +1007,14 @@ function openSearchModal(card){
   $('modalForAction').textContent='· para '+(card.querySelector('.ac-name').value||'esta acción');
   // heredar lo que se venía haciendo en la búsqueda chica de esta acción
   const inlineQ=(card.querySelector('.search')||{}).value||'';
+  const inlineDept=(card.querySelector('.fDept')||{}).value||'';
   const inlineCl=(card.querySelector('.fClase')||{}).value||'';
   const inlineSub=(card.querySelector('.fSub')||{}).value||'';
   $('mSearch').value=inlineQ;
-  // arrancar con filtros limpios y heredar la clase/subclase de la búsqueda chica (si no existen en el maestro, renderChips las poda)
-  MODAL.f={clIn:new Set(),clEx:new Set(),subIn:new Set(),subEx:new Set()};
-  $('mClaseFind').value='';$('mSubFind').value='';
+  // arrancar con filtros limpios y heredar depto/clase/subclase de la búsqueda chica (si no existen en el maestro, renderChips las poda)
+  MODAL.f={dIn:new Set(),dEx:new Set(),clIn:new Set(),clEx:new Set(),subIn:new Set(),subEx:new Set()};
+  $('mDeptFind').value='';$('mClaseFind').value='';$('mSubFind').value='';
+  if(inlineDept)MODAL.f.dIn.add(String(inlineDept));
   if(inlineCl)MODAL.f.clIn.add(inlineCl);
   if(inlineSub)MODAL.f.subIn.add(inlineSub);
   fillModalFilters();
@@ -1022,6 +1047,8 @@ function runModalSearch(){
   const hits=[];const CAP=600;const allHits=[];
   for(const r of MASTER){
     if(DEPT_ON.size&&r.dept&&!DEPT_ON.has(r.dept))continue;
+    const rd=String(r.dept||'');
+    if(F.dIn.size&&!F.dIn.has(rd))continue; if(F.dEx.has(rd))continue;
     if(F.clIn.size&&!F.clIn.has(r.clase))continue; if(F.clEx.has(r.clase))continue;
     if(F.subIn.size&&!F.subIn.has(r.subclase))continue; if(F.subEx.has(r.subclase))continue;
     if(q.length<1 || r.desc.toLowerCase().includes(q)||(r.clase||'').toLowerCase().includes(q)||(r.subclase||'').toLowerCase().includes(q)||r.num.includes(q)){
@@ -1040,7 +1067,7 @@ function runModalSearch(){
        `<td class="num">${r.num}${usedTag}</td><td class="desc">${r.desc||''}</td><td>${r.clase||''}</td><td>${r.subclase||''}</td><td class="ean">${r.ean||''}</td></tr>`;
   });
   tbody.innerHTML=h;
-  const noFilter=!F.clIn.size&&!F.clEx.size&&!F.subIn.size&&!F.subEx.size;
+  const noFilter=!F.dIn.size&&!F.dEx.size&&!F.clIn.size&&!F.clEx.size&&!F.subIn.size&&!F.subEx.size;
   $('mCount').textContent=allHits.length+' coinciden'+(allHits.length>CAP?` · se muestran ${CAP}`:'')+((q.length<1&&noFilter)?' · escribí o filtrá para acotar':'');
   // tildar = agregar · destildar = quitar, al instante; el clic en la fila también tilda
   tbody.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.addEventListener('change',()=>{
@@ -1056,8 +1083,10 @@ function runModalSearch(){
   updateModalSelCount();
 }
 $('mSearch').addEventListener('input',runModalSearch);
+$('mDeptFind').addEventListener('input',fillModalFilters);
 $('mClaseFind').addEventListener('input',fillModalFilters);
 $('mSubFind').addEventListener('input',fillModalSub);
+$('mDeptClear').onclick=()=>{const F=MODAL.f;F.dIn.clear();F.dEx.clear();$('mDeptFind').value='';fillModalFilters();runModalSearch();};
 $('mClaseClear').onclick=()=>{const F=MODAL.f;F.clIn.clear();F.clEx.clear();$('mClaseFind').value='';fillModalFilters();runModalSearch();};
 $('mSubClear').onclick=()=>{const F=MODAL.f;F.subIn.clear();F.subEx.clear();$('mSubFind').value='';fillModalSub();runModalSearch();};
 $('modalCloseTop').onclick=closeSearchModal;
