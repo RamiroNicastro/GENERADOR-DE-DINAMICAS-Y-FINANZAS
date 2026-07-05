@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Dinámicas y Financiaciones · v10.7</title>
+<title>Generador de Dinámicas y Financiaciones · v10.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -138,6 +138,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .results tr.is-sel td{background:#eef7f0}
   .results .desc{white-space:normal;min-width:160px}
   .res-actions{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;background:#fbf7ee;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:3}
+  /* v10.8: filtros multi-selección (chips) también en la búsqueda chica */
+  .card-facets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px}
+  .card-facets .facets-note{grid-column:1/-1;font-size:.72rem;color:var(--muted);margin:-2px 0 2px}
+  .card-facets .facets-note b{color:var(--ink)}
+  .card-facets .facet-chips{max-height:82px}
+  .card-facets .facet-dept[hidden]{display:none}
   .selected{margin-top:10px}
   .sel-tools{display:none;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
   .sel-tools.show{display:flex}
@@ -505,7 +511,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <div class="foot">
     <p>El archivo del sistema no se modifica. Esta herramienta solo arma las filas. Dinámica y Financiación son independientes (cada una con sus productos y parámetros). Usá “Copiar estas acciones al otro sector” para no cargar dos veces.</p>
-    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.7</p>
+    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.8</p>
   </div>
 </div>
 
@@ -1006,17 +1012,11 @@ function openSearchModal(card){
   MODAL.card=card;
   $('modalForAction').textContent='· para '+(card.querySelector('.ac-name').value||'esta acción');
   // heredar lo que se venía haciendo en la búsqueda chica de esta acción
-  const inlineQ=(card.querySelector('.search')||{}).value||'';
-  const inlineDept=(card.querySelector('.fDept')||{}).value||'';
-  const inlineCl=(card.querySelector('.fClase')||{}).value||'';
-  const inlineSub=(card.querySelector('.fSub')||{}).value||'';
-  $('mSearch').value=inlineQ;
-  // arrancar con filtros limpios y heredar depto/clase/subclase de la búsqueda chica (si no existen en el maestro, renderChips las poda)
-  MODAL.f={dIn:new Set(),dEx:new Set(),clIn:new Set(),clEx:new Set(),subIn:new Set(),subEx:new Set()};
+  $('mSearch').value=(card.querySelector('.search')||{}).value||'';
+  // v10.8: el modal arranca con los MISMOS filtros de chips de la búsqueda chica (copia)
+  const cf=card._f||{dIn:new Set(),dEx:new Set(),clIn:new Set(),clEx:new Set(),subIn:new Set(),subEx:new Set()};
+  MODAL.f={dIn:new Set(cf.dIn),dEx:new Set(cf.dEx),clIn:new Set(cf.clIn),clEx:new Set(cf.clEx),subIn:new Set(cf.subIn),subEx:new Set(cf.subEx)};
   $('mDeptFind').value='';$('mClaseFind').value='';$('mSubFind').value='';
-  if(inlineDept)MODAL.f.dIn.add(String(inlineDept));
-  if(inlineCl)MODAL.f.clIn.add(inlineCl);
-  if(inlineSub)MODAL.f.subIn.add(inlineSub);
   fillModalFilters();
   runModalSearch();
   $('searchModal').classList.add('show');
@@ -1024,6 +1024,11 @@ function openSearchModal(card){
 }
 function closeSearchModal(){
   const card=MODAL.card;
+  // v10.8: sincronizar los filtros del modal de vuelta a la búsqueda chica, así queda igual
+  if(card&&card._f&&MODAL.f){
+    ['dIn','dEx','clIn','clEx','subIn','subEx'].forEach(k=>{card._f[k]=new Set(MODAL.f[k]);});
+    if(card._fillFilters)card._fillFilters();
+  }
   $('searchModal').classList.remove('show');MODAL.card=null;
   if(card&&card._refresh)card._refresh(); // refrescar la búsqueda chica de la card al volver
 }
@@ -1144,10 +1149,20 @@ function addAction(){
 
     <div class="field prod-search">
       <label>Buscar productos en el maestro <span class="hint">(por SKU/Número, descripción, clase o subclase)</span></label>
-      <div class="row2" style="margin-bottom:8px">
-        <select class="fDept"><option value="">Depto: todos</option></select>
-        <select class="fClase"><option value="">Clase: todas</option></select>
-        <select class="fSub"><option value="">Subclase: todas</option></select>
+      <div class="card-facets">
+        <div class="facets-note">Filtrá por <b>Depto · Clase · Subclase</b> (podés elegir varios): <b>1 clic incluye ✓</b> · <b>2 excluye ✕</b> · <b>3 lo saca</b>.</div>
+        <div class="facet facet-dept cf-dept">
+          <div class="facet-head"><label>Depto</label><input class="facet-find cfDeptFind" placeholder="filtrar…" autocomplete="off"><button type="button" class="facet-clear cfDeptClear">limpiar</button></div>
+          <div class="facet-chips cfDeptChips"></div>
+        </div>
+        <div class="facet cf-clase">
+          <div class="facet-head"><label>Clase</label><input class="facet-find cfClaseFind" placeholder="filtrar…" autocomplete="off"><button type="button" class="facet-clear cfClaseClear">limpiar</button></div>
+          <div class="facet-chips cfClaseChips"></div>
+        </div>
+        <div class="facet cf-sub">
+          <div class="facet-head"><label>Subclase</label><input class="facet-find cfSubFind" placeholder="filtrar…" autocomplete="off"><button type="button" class="facet-clear cfSubClear">limpiar</button></div>
+          <div class="facet-chips cfSubChips"></div>
+        </div>
       </div>
       <div class="search-row">
         <input class="search" placeholder="ej. parrilla · o pegá un SKU" autocomplete="off">
@@ -1229,9 +1244,9 @@ function addAction(){
   // estado de productos
   card._prods=[]; // {num,ean,desc}
   const searchEl=card.querySelector('.search'), resultsEl=card.querySelector('.results'),
-        selEl=card.querySelector('.selected'), ccEl=card.querySelector('.cc'),
-        fDeptEl=card.querySelector('.fDept'),
-        fClaseEl=card.querySelector('.fClase'), fSubEl=card.querySelector('.fSub');
+        selEl=card.querySelector('.selected'), ccEl=card.querySelector('.cc');
+  // v10.8: filtros de Depto/Clase/Subclase por chips multi-selección (incluir/excluir/sacar)
+  card._f={dIn:new Set(),dEx:new Set(),clIn:new Set(),clEx:new Set(),subIn:new Set(),subEx:new Set()};
 
   const CHIP_CAP=8; // cuántos chips se ven antes de plegar
   card._chipsOpen=false;
@@ -1311,59 +1326,71 @@ function addAction(){
   if(ovRegEl)applyRegionSummary(ovRegEl,ovRegSum);
   updateOvFlag(card);
 
-  // poblar filtros Depto/Clase/Subclase desde el maestro
+  // poblar filtros Depto/Clase/Subclase desde el maestro (chips multi-selección, v10.8)
+  const cfDeptChips=card.querySelector('.cfDeptChips'),cfClaseChips=card.querySelector('.cfClaseChips'),cfSubChips=card.querySelector('.cfSubChips'),
+        cfDeptFind=card.querySelector('.cfDeptFind'),cfClaseFind=card.querySelector('.cfClaseFind'),cfSubFind=card.querySelector('.cfSubFind'),
+        cfDept=card.querySelector('.cf-dept');
+  const anyFilter=()=>{const F=card._f;return F.dIn.size||F.dEx.size||F.clIn.size||F.clEx.size||F.subIn.size||F.subEx.size;};
   function cardScope(){
-    // v9.7: filas del maestro visibles para ESTA acción: si eligió un depto puntual,
-    // solo ese; si no, respeta los chips globales. Clase y Subclase se acotan a esto.
-    const dept=fDeptEl.value;
-    if(dept)return MASTER.filter(r=>String(r.dept)===String(dept));
-    return masterInDepts();
+    // filas del maestro visibles para ESTA acción: respeta chips globales + chips de Depto de la acción
+    const F=card._f;
+    return masterInDepts().filter(r=>{
+      const d=String(r.dept||'');
+      if(F.dIn.size&&!F.dIn.has(d))return false;
+      if(F.dEx.has(d))return false;
+      return true;
+    });
   }
-  function refreshFilters(){
-    // depto: lista de todos los deptos del maestro (respetando chips globales)
-    const allDepts=[...new Set(masterInDepts().map(r=>r.dept).filter(Boolean))].sort((a,b)=>(parseInt(a)||a)-(parseInt(b)||b));
-    const prevD=fDeptEl.value;
-    fDeptEl.innerHTML='<option value="">Depto: todos</option>'+allDepts.map(d=>`<option>${d}</option>`).join('');
-    if(allDepts.includes(prevD))fDeptEl.value=prevD; else fDeptEl.value='';
-    refreshClases();
-  }
-  function refreshClases(){
-    // clases del depto elegido (o de los chips globales si no hay depto)
+  function fillFilters(){
+    const F=card._f;
+    // depto: sobre todo el maestro visible; clase/subclase se acotan al depto elegido
+    const dCounts=new Map();
+    masterInDepts().forEach(r=>{if(r.dept)dCounts.set(String(r.dept),(dCounts.get(String(r.dept))||0)+1);});
+    cfDept.hidden=dCounts.size<=1;
+    renderChips(cfDeptChips,dCounts,F.dIn,F.dEx,cfDeptFind.value,()=>{fillFilters();doSearch();});
     const data=cardScope();
-    const clases=[...new Set(data.map(r=>r.clase).filter(Boolean))].sort();
-    const prevC=fClaseEl.value;
-    fClaseEl.innerHTML='<option value="">Clase: todas</option>'+clases.map(c=>`<option>${c}</option>`).join('');
-    if(clases.includes(prevC))fClaseEl.value=prevC; else fClaseEl.value='';
-    refreshSub();
+    const clCounts=new Map();
+    data.forEach(r=>{if(r.clase)clCounts.set(r.clase,(clCounts.get(r.clase)||0)+1);});
+    renderChips(cfClaseChips,clCounts,F.clIn,F.clEx,cfClaseFind.value,()=>{fillFilters();fillSubFacet();doSearch();});
+    fillSubFacet();
   }
-  function refreshSub(){
-    const data=cardScope();const cl=fClaseEl.value;
-    const subs=[...new Set(data.filter(r=>!cl||r.clase===cl).map(r=>r.subclase).filter(Boolean))].sort();
-    const prevS=fSubEl.value;
-    fSubEl.innerHTML='<option value="">Subclase: todas</option>'+subs.map(s=>`<option>${s}</option>`).join('');
-    if(subs.includes(prevS))fSubEl.value=prevS; else fSubEl.value='';
+  function fillSubFacet(){
+    const F=card._f,data=cardScope();
+    const counts=new Map();
+    data.forEach(r=>{
+      if(!r.subclase)return;
+      if(F.clIn.size&&!F.clIn.has(r.clase))return;
+      if(F.clEx.has(r.clase))return;
+      counts.set(r.subclase,(counts.get(r.subclase)||0)+1);
+    });
+    renderChips(cfSubChips,counts,F.subIn,F.subEx,cfSubFind.value,()=>{fillSubFacet();doSearch();});
   }
+  function refreshFilters(){fillFilters();}
   card._refreshFilters=refreshFilters;
   card._cardScope=cardScope;
-  // al cambiar Depto: re-acotar Clase y Subclase a ese depto, y buscar
-  fDeptEl.addEventListener('change',()=>{refreshClases();doSearch();});
-  fClaseEl.addEventListener('change',()=>{refreshSub();doSearch();});
-  fSubEl.addEventListener('change',doSearch);
+  card._fillFilters=fillFilters;
+  cfDeptFind.addEventListener('input',fillFilters);
+  cfClaseFind.addEventListener('input',fillFilters);
+  cfSubFind.addEventListener('input',fillSubFacet);
+  card.querySelector('.cfDeptClear').onclick=()=>{const F=card._f;F.dIn.clear();F.dEx.clear();cfDeptFind.value='';fillFilters();doSearch();};
+  card.querySelector('.cfClaseClear').onclick=()=>{const F=card._f;F.clIn.clear();F.clEx.clear();cfClaseFind.value='';fillFilters();doSearch();};
+  card.querySelector('.cfSubClear').onclick=()=>{const F=card._f;F.subIn.clear();F.subEx.clear();cfSubFind.value='';fillSubFacet();doSearch();};
 
   function doSearch(){
     const q=searchEl.value.trim().toLowerCase();
-    const dept=fDeptEl.value, cl=fClaseEl.value, sub=fSubEl.value;
+    const F=card._f;
     if(!MASTER.length){resultsEl.classList.add('show');resultsEl.innerHTML='<div class="res-actions"><span class="mini">Primero cargá el maestro arriba.</span></div>';return;}
-    if(q.length<2 && !dept && !cl && !sub){resultsEl.classList.remove('show');resultsEl.innerHTML='';return;}
+    if(q.length<2 && !anyFilter()){resultsEl.classList.remove('show');resultsEl.innerHTML='';return;}
     const sel=new Set(card._prods.map(p=>p.num));
     const usage=skuUsageMap(card);
     const DISP=300;            // cuántas filas se dibujan (por performance)
     const allHits=[];          // TODOS los que coinciden con el filtro/búsqueda (sin tope)
     for(const r of MASTER){
-      // filtro de depto: si el select tiene valor, filtra por ese depto; si no, respeta los chips globales
-      if(dept){if(String(r.dept)!==String(dept))continue;}
-      else if(DEPT_ON.size&&r.dept&&!DEPT_ON.has(r.dept))continue;
-      if(cl&&r.clase!==cl)continue; if(sub&&r.subclase!==sub)continue;
+      if(DEPT_ON.size&&r.dept&&!DEPT_ON.has(r.dept))continue; // chips globales de depto
+      const rd=String(r.dept||'');
+      if(F.dIn.size&&!F.dIn.has(rd))continue; if(F.dEx.has(rd))continue;
+      if(F.clIn.size&&!F.clIn.has(r.clase))continue; if(F.clEx.has(r.clase))continue;
+      if(F.subIn.size&&!F.subIn.has(r.subclase))continue; if(F.subEx.has(r.subclase))continue;
       if(q.length<2 || r.desc.toLowerCase().includes(q)||r.clase.toLowerCase().includes(q)||r.subclase.toLowerCase().includes(q)||r.num.includes(q)){allHits.push(r);}}
     const hits=allHits.slice(0,DISP);                 // solo estos se dibujan
     const nuevos=allHits.filter(r=>!sel.has(r.num)).length;  // cuántos se sumarían (sin contar los ya elegidos)
@@ -1405,7 +1432,7 @@ function addAction(){
   searchEl.addEventListener('input',doSearch);
   // botón "pantalla completa": abre el modal con la misma búsqueda (opcional, no obligatorio)
   card.querySelector('.search-open').onclick=()=>openSearchModal(card);
-  card._refresh=()=>{if(searchEl.value.trim().length>=2||fDeptEl.value||fClaseEl.value||fSubEl.value)doSearch();};
+  card._refresh=()=>{if(searchEl.value.trim().length>=2||anyFilter())doSearch();};
   refreshFilters();
 
   // manual — acepta SKUs pegados en cualquier formato (uno por línea, separados por
