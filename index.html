@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Dinámicas y Financiaciones · v10.8</title>
+<title>Generador de Dinámicas y Financiaciones · v10.9</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -247,6 +247,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .facet-chips .empty{font-size:.76rem;color:var(--muted);padding:2px}
   .f-chip{font-size:.76rem;border:1px solid var(--line);border-radius:20px;padding:2px 10px;cursor:pointer;background:#fff;user-select:none;white-space:nowrap}
   .f-chip small{opacity:.55;margin-left:4px;font-size:.68rem}
+  /* v10.9: número de subclase al lado del nombre, en tono más claro */
+  .f-chip .fc-id{color:var(--muted);opacity:.85;font-weight:500;margin-left:5px;font-variant-numeric:tabular-nums}
+  .f-chip .fc-id::before{content:"#";opacity:.5}
+  .sub-id{color:var(--muted);opacity:.75;font-size:.9em;font-variant-numeric:tabular-nums}
+  .f-chip.inc .fc-id,.f-chip.exc .fc-id{color:inherit;opacity:.6}
   .f-chip:hover{border-color:var(--accent)}
   .f-chip.inc{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep);font-weight:600}
   .f-chip.inc::before{content:"✓ "}
@@ -511,7 +516,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <div class="foot">
     <p>El archivo del sistema no se modifica. Esta herramienta solo arma las filas. Dinámica y Financiación son independientes (cada una con sus productos y parámetros). Usá “Copiar estas acciones al otro sector” para no cargar dos veces.</p>
-    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.8</p>
+    <p class="credit">Desarrollado por <b>Ramiro Nicastro</b> · v10.9</p>
   </div>
 </div>
 
@@ -536,7 +541,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         <div class="facet-chips" id="mClaseChips"></div>
       </div>
       <div class="facet">
-        <div class="facet-head"><label>Subclase</label><input class="facet-find" id="mSubFind" placeholder="filtrar subclases…" autocomplete="off"><button type="button" class="facet-clear" id="mSubClear">limpiar</button></div>
+        <div class="facet-head"><label>Subclase</label><input class="facet-find" id="mSubFind" placeholder="filtrar por nombre o N.º…" autocomplete="off"><button type="button" class="facet-clear" id="mSubClear">limpiar</button></div>
         <div class="facet-chips" id="mSubChips"></div>
       </div>
     </div>
@@ -721,9 +726,10 @@ document.querySelectorAll('#modeSwitch button').forEach(b=>b.addEventListener('c
 
 /* ===== Maestro ===== */
 let MASTER=[], DEPTS=[], DEPT_ON=new Set();
+let SUBCLASE_ID=new Map(); // v10.9: subclase DESC -> su número (Subclase ID), para mostrarlo al lado
 let DATE_FMT='dmy'; // v10: 'dmy' = DD/MM/AAAA (Argentina) · 'mdy' = MM/DD/AAAA (USA). Se persiste en localStorage.
-const ALIAS={num:['sku id','numero','número'],desc:['sku desc','descripcion','descripción'],ean:['código sku id','codigo sku id','c\u00f3digo sku id','ean'],dept:['dept id','dept','departamento'],clase:['clase desc','clase'],subclase:['subclase desc','subclase']};
-const POS={num:0,desc:1,ean:10,dept:16,clase:21,subclase:23};
+const ALIAS={num:['sku id','numero','número'],desc:['sku desc','descripcion','descripción'],ean:['código sku id','codigo sku id','c\u00f3digo sku id','ean'],dept:['dept id','dept','departamento'],clase:['clase desc','clase'],subclase:['subclase desc','subclase'],subId:['subclase id subcategoria','subclase id','subclase id subcat','sub id']};
+const POS={num:0,desc:1,ean:10,dept:16,clase:21,subclase:23,subId:22};
 function sniff(l){return l.indexOf('\t')>=0?'\t':(l.indexOf(';')>=0?';':',');}
 function splitLine(l,d){const o=[];let c='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(q){if(ch=='"'){if(l[i+1]=='"'){c+='"';i++;}else q=false;}else c+=ch;}else{if(ch=='"')q=true;else if(ch===d){o.push(c);c='';}else c+=ch;}}o.push(c);return o;}
 function textToRows(text){const lines=text.split(/\r?\n/).filter(l=>l.trim().length);if(!lines.length)return[];const d=sniff(lines[0]);return lines.map(l=>splitLine(l,d));}
@@ -752,13 +758,14 @@ function parseRows(rows){
   const g=(c,i)=>(c[i]!=null?c[i]:'').toString().trim();
   const seen=new Set(),recs=[],depts=new Set();
   for(let i=start;i<rows.length;i++){const c=rows[i];if(!c)continue;const num=g(c,map.num);if(!num||seen.has(num))continue;seen.add(num);
-    const r={num,desc:g(c,map.desc),ean:g(c,map.ean),dept:g(c,map.dept),clase:g(c,map.clase),subclase:g(c,map.subclase)};
+    const r={num,desc:g(c,map.desc),ean:g(c,map.ean),dept:g(c,map.dept),clase:g(c,map.clase),subclase:g(c,map.subclase),subId:g(c,map.subId)};
     recs.push(r);if(r.dept)depts.add(r.dept);}
   return{recs,depts:[...depts],diag};
 }
 function parseMaster(text){return parseRows(textToRows(text));}
 function applyMaster(recs,depts,diag,fromCache){
   MASTER=recs;DEPTS=depts.slice().sort((a,b)=>(parseInt(a)||a)-(parseInt(b)||b));DEPT_ON=new Set(DEPTS);
+  SUBCLASE_ID=new Map();recs.forEach(r=>{if(r.subclase&&r.subId&&!SUBCLASE_ID.has(r.subclase))SUBCLASE_ID.set(r.subclase,r.subId);});
   $('masterBox').classList.add('loaded');
   $('masterTitle').textContent='✓ '+recs.length.toLocaleString('es-AR')+' productos'+(fromCache?' (de la última vez)':' cargados');
   const diagTxt=diag?(diag+'. '):'';
@@ -893,7 +900,7 @@ async function loadMasterXlsxBig(file){
     const addRec=c=>{
       const num=g(c,map.num);if(!num||seen.has(num))return;
       seen.add(num);
-      const r={num,desc:g(c,map.desc),ean:g(c,map.ean),dept:g(c,map.dept),clase:g(c,map.clase),subclase:g(c,map.subclase)};
+      const r={num,desc:g(c,map.desc),ean:g(c,map.ean),dept:g(c,map.dept),clase:g(c,map.clase),subclase:g(c,map.subclase),subId:g(c,map.subId)};
       recs.push(r);if(r.dept)depts.add(r.dept);
     };
     const reader=(await zipStream(file,entries[wsName])).getReader();
@@ -954,21 +961,25 @@ function cycleChip(inSet,exSet,key){
   else if(exSet.has(key)){exSet.delete(key);}
   else{inSet.add(key);}
 }
-function renderChips(el,counts,inSet,exSet,findVal,onClick){
+function renderChips(el,counts,inSet,exSet,findVal,onClick,idMap){
   // sacamos del filtro lo que ya no existe en el maestro visible (para que no queden filtros ocultos)
   [...inSet].forEach(k=>{if(!counts.has(k))inSet.delete(k);});
   [...exSet].forEach(k=>{if(!counts.has(k))exSet.delete(k);});
   const q=(findVal||'').trim().toLowerCase();
+  // filtrar por texto o por número de subclase (así se encuentra tipeando el número)
+  const idOf=k=>idMap?(idMap.get(k)||''):'';
   // orden numérico cuando corresponde (deptos: 2 antes que 10), alfabético para el resto
-  const keys=[...counts.keys()].sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).filter(k=>!q||k.toLowerCase().includes(q));
+  const keys=[...counts.keys()].sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).filter(k=>!q||k.toLowerCase().includes(q)||idOf(k).toLowerCase().includes(q));
   el.innerHTML='';
   if(!keys.length){const d=document.createElement('div');d.className='empty';d.textContent=q?'sin coincidencias':'—';el.appendChild(d);return;}
   keys.forEach(k=>{
     const chip=document.createElement('span');
     chip.className='f-chip'+(inSet.has(k)?' inc':exSet.has(k)?' exc':'');
     const t=document.createElement('span');t.className='fc-txt';t.textContent=k;chip.appendChild(t);
+    const id=idOf(k);
+    if(id){const idEl=document.createElement('small');idEl.className='fc-id';idEl.textContent=id;chip.appendChild(idEl);}
     const n=document.createElement('small');n.textContent=counts.get(k).toLocaleString('es-AR');chip.appendChild(n);
-    chip.title='1 clic: incluir · 2: excluir · 3: sacar';
+    chip.title=(id?'N.º '+id+' · ':'')+'1 clic: incluir · 2: excluir · 3: sacar';
     chip.onclick=()=>{cycleChip(inSet,exSet,k);onClick();};
     el.appendChild(chip);
   });
@@ -1005,7 +1016,7 @@ function fillModalSub(){
     if(F.clEx.has(r.clase))return;
     counts.set(r.subclase,(counts.get(r.subclase)||0)+1);
   });
-  renderChips($('mSubChips'),counts,F.subIn,F.subEx,$('mSubFind').value,()=>{fillModalSub();runModalSearch();});
+  renderChips($('mSubChips'),counts,F.subIn,F.subEx,$('mSubFind').value,()=>{fillModalSub();runModalSearch();},SUBCLASE_ID);
 }
 function openSearchModal(card){
   if(!MASTER.length){toast('Primero cargá el maestro arriba');return;}
@@ -1069,7 +1080,7 @@ function runModalSearch(){
     const used=usage.get(r.num);
     const usedTag=used?`<span class="used" title="Ya está en: ${used.join(', ')}">↺ ${used.length} acción(es)</span>`:'';
     h+=`<tr class="${isSel?'is-sel':''}"><td class="ck"><input type="checkbox" data-num="${r.num}" data-ean="${r.ean}" data-desc="${(r.desc||'').replace(/"/g,'&quot;')}" ${isSel?'checked':''}></td>`+
-       `<td class="num">${r.num}${usedTag}</td><td class="desc">${r.desc||''}</td><td>${r.clase||''}</td><td>${r.subclase||''}</td><td class="ean">${r.ean||''}</td></tr>`;
+       `<td class="num">${r.num}${usedTag}</td><td class="desc">${r.desc||''}</td><td>${r.clase||''}</td><td>${r.subclase||''}${r.subId?' <span class="sub-id">#'+r.subId+'</span>':''}</td><td class="ean">${r.ean||''}</td></tr>`;
   });
   tbody.innerHTML=h;
   const noFilter=!F.dIn.size&&!F.dEx.size&&!F.clIn.size&&!F.clEx.size&&!F.subIn.size&&!F.subEx.size;
@@ -1160,7 +1171,7 @@ function addAction(){
           <div class="facet-chips cfClaseChips"></div>
         </div>
         <div class="facet cf-sub">
-          <div class="facet-head"><label>Subclase</label><input class="facet-find cfSubFind" placeholder="filtrar…" autocomplete="off"><button type="button" class="facet-clear cfSubClear">limpiar</button></div>
+          <div class="facet-head"><label>Subclase</label><input class="facet-find cfSubFind" placeholder="nombre o N.º…" autocomplete="off"><button type="button" class="facet-clear cfSubClear">limpiar</button></div>
           <div class="facet-chips cfSubChips"></div>
         </div>
       </div>
@@ -1363,7 +1374,7 @@ function addAction(){
       if(F.clEx.has(r.clase))return;
       counts.set(r.subclase,(counts.get(r.subclase)||0)+1);
     });
-    renderChips(cfSubChips,counts,F.subIn,F.subEx,cfSubFind.value,()=>{fillSubFacet();doSearch();});
+    renderChips(cfSubChips,counts,F.subIn,F.subEx,cfSubFind.value,()=>{fillSubFacet();doSearch();},SUBCLASE_ID);
   }
   function refreshFilters(){fillFilters();}
   card._refreshFilters=refreshFilters;
@@ -1398,7 +1409,7 @@ function addAction(){
     const totalTxt=allHits.length+' coinciden'+(allHits.length>DISP?` · se muestran ${DISP}`:'');
     let h=`<div class="res-actions"><span class="mini">${totalTxt} · tildá = agregar · destildá = quitar</span><span><button class="btn btn-amber btn-sm" type="button" data-all style="margin-right:6px">➕ Agregar todos (${nuevos})</button><button class="btn btn-ghost btn-sm" type="button" data-none${yaEn?'':' style="display:none"'}>− Quitar todos (${yaEn})</button></span></div>`;
     h+='<table><thead><tr><th></th><th>Número</th><th>Descripción</th><th>Clase</th><th>Subclase</th><th>EAN</th></tr></thead><tbody>';
-    hits.forEach(r=>{const used=usage.get(r.num);const usedTag=used?` <span class="used" title="Ya está en: ${used.join(', ')}">↺ ${used.length}</span>`:'';h+=`<tr class="${sel.has(r.num)?'is-sel':''}"><td><input type="checkbox" data-num="${r.num}" data-ean="${r.ean}" data-desc="${(r.desc||'').replace(/"/g,'&quot;')}" ${sel.has(r.num)?'checked':''}></td><td>${r.num}${usedTag}</td><td class="desc">${r.desc}</td><td>${r.clase}</td><td>${r.subclase}</td><td>${r.ean}</td></tr>`;});
+    hits.forEach(r=>{const used=usage.get(r.num);const usedTag=used?` <span class="used" title="Ya está en: ${used.join(', ')}">↺ ${used.length}</span>`:'';h+=`<tr class="${sel.has(r.num)?'is-sel':''}"><td><input type="checkbox" data-num="${r.num}" data-ean="${r.ean}" data-desc="${(r.desc||'').replace(/"/g,'&quot;')}" ${sel.has(r.num)?'checked':''}></td><td>${r.num}${usedTag}</td><td class="desc">${r.desc}</td><td>${r.clase}</td><td>${r.subclase}${r.subId?' <span class="sub-id">#'+r.subId+'</span>':''}</td><td>${r.ean}</td></tr>`;});
     h+='</tbody></table>';
     resultsEl.innerHTML=h;resultsEl.classList.add('show');
     // tildar/destildar aplica al instante (v10.6); el clic en la fila también tilda
